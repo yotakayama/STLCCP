@@ -2,6 +2,8 @@ import numpy as np
 from abc import ABC, abstractmethod
 from treelib import Tree
 from scipy.special import logsumexp
+import collections
+
 
 class STLFormula(ABC):
     """
@@ -499,13 +501,23 @@ class STLTree(STLFormula):
                 self.count = self.count +1
             else:
                 self.countleaf(subformula,self.count)
+
+
+def flattenmat(l):
+    for el in l:
+        if isinstance(el, collections.abc.Iterable) and not isinstance(el, (str, bytes)):
+            yield from flattenmat(el)
+        else:
+            yield el
                 
 def smoothmin(mode,k, a):
         length = len(a)
+        #print(a,length)
         for i in range(length):
             a[i] = - k * a[i]
-        a=np.array(a)
+        a= np.array(list(flattenmat(a)))
         if mode =="mellowmin":
             return - (logsumexp(a)-np.log(length)) / k
         else:
             return - logsumexp(a) / k
+

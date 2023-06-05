@@ -132,19 +132,19 @@ class CCPSTLSolver(STLSolver):
         else: #self.spec.combination_type =="or":
             subrho_array = []
             for i, subformula in enumerate(self.spec.subformula_list):
-                t_sub = formula.timesteps[i] 
+                t = self.spec.timesteps[i] 
                 if isinstance(subformula, LinearPredicate):
-                    y = self.y[:,t+t_sub]
+                    y = self.y[:,t]
                     subrho = subformula.b - subformula.a.T@y
                     subrho_array.append(subrho)
 
                 elif isinstance(subformula, NonlinearPredicate):
-                    y = self.y[:,t+t_sub]
+                    y = self.y[:,t]
                     subrho = -subformula.g(y)
                     subrho_array.append(subrho)
 
                 elif subformula.combination_type == "or":
-                    print("error, _or_ should not be here")
+                    raise Exception("error, _or_ should not be here")
 
                 else: #subformula.combination_type == "and": 
                     subrho = cvxpy.Variable(1) 
@@ -152,20 +152,20 @@ class CCPSTLSolver(STLSolver):
 
 
                     for l, subsubformula in enumerate(subformula.subformula_list):
-                        t_subsub = subformula.timesteps[l]
+                        t_sub = subformula.timesteps[l]
                         if isinstance(subsubformula, LinearPredicate):
-                            y = self.y[:,t+t_sub+t_subsub]
+                            y = self.y[:,t+t_sub]
                             self.constr += [ subsubformula.b - subsubformula.a.T@y - subrho <= 0]
                             self.constr_penalty += [1]
 
                         elif isinstance(subsubformula, NonlinearPredicate):
                             # rho = g(y)
-                            y = self.y[:,t+t_sub+t_subsub]
+                            y = self.y[:,t+t_sub]
                             self.constr += [ -subusbusbformula.g(y) - subrho <= 0 ]
                             self.constr_penalty += [1]
 
                         else: 
-                            self.or_and_loop_to_constr(subsubformula,subrho,t+t_sub+t_subsub)
+                            self.or_and_loop_to_constr(subsubformula,subrho,t+t_sub)
 
 
             length = len(subrho_array)
@@ -178,8 +178,13 @@ class CCPSTLSolver(STLSolver):
             else: # self.mode =="lse": 
                     smoothedmin = - (cvxpy.log_sum_exp(subrho_array)) / self.k
 
-            self.cost += smoothedmin 
-            self.constr += [smoothedmin <= 0] 
+            self.rho_max = cvxpy.Variable(1) 
+            self.cost += self.rho_max 
+            self.constr += [ self.rho_max <= 0] # this is a dcp constraint
+            self.spec.countleaves()
+            self.constr_penalty += [self.spec.count] 
+            
+            self.constr += [smoothedmin <= self.rho_max] 
             self.spec.countleaves()
             self.constr_penalty += [self.spec.count]
 
@@ -200,7 +205,7 @@ class CCPSTLSolver(STLSolver):
                 subrho_array.append(subrho)
 
             elif subformula.combination_type == "or":
-                print("error, _or_ should not be here")
+                raise Exception("error, _or_ should not be here")
 
             else: #subformula.combination_type == "and": 
                 subrho = cvxpy.Variable(1) 

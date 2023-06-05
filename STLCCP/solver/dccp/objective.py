@@ -14,6 +14,7 @@ def is_dccp(objective):
         the objective must be convex, concave, affine, or constant
     """
     if objective.expr.curvature == "UNKNOWN":
+        print("objfal")
         return False
     else:
         return True
