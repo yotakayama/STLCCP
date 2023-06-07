@@ -88,15 +88,13 @@ class CCPSTLSolver(STLSolver):
         # GUROBI QP solver options:
         #   solopts={'Method':2,'BarConvTol':1e-3,'BarQCPConvTol':1e-3} # barrier
         #   solopts={'Method':1} # 1=dual simplex
-        result,solve_time = prob.solve(method="dccp", solver='GUROBI',verbose=False, constr_penalty=self.constr_penalty,weight=weight) # ,verbose=True, **solopts)
+        result,solve_time = prob.solve(method="dccp", solver='OSQP',verbose=False, constr_penalty=self.constr_penalty,weight=weight) # ,verbose=True, **solopts)
 
         # Output
-        print("cost value =", "{:.4f}".format(result[0]),"self.rho_max", "{:.4f}".format(self.rho_max.value[0]))
-        print("mode:", self.mode, ", smooth parameter k:", self.k)
-        rho_orig = self.spec.orig_robustness(self.y.value,0)[0]
-        print("original robustness:", "{:.4f}".format(rho_orig))
+        print("cost:", "{:.4f}".format(result[0]),"rho_max:", "{:.4f}".format(self.rho_max.value[0]),"quadratic cost:", "{:.4f}".format(result[0]-self.rho_max.value[0]))
         rho = self.spec.robustness(self.y.value,0,self.k,self.mode)
-        print("smooth reversed-robustness:", "{:.4f}".format(rho))
+        rho_orig = self.spec.orig_robustness(self.y.value,0)[0]
+        print("original robustness:", "{:.4f}".format(rho_orig),"(smooth reversed-robustness:", "{:.4f})".format(rho))
         print("solve_time:","{:.2f}".format(solve_time))
 
         return (self.x,self.u,self.y,rho_orig,solve_time,result[-2],result[-1])

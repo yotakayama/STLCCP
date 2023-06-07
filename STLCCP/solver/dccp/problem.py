@@ -230,6 +230,10 @@ def iter_dccp(self, max_iter, tau, mu, tau_max, solver, ep, max_penalty_tol, **k
 
 
     self.constr_penalty = kwargs['constr_penalty']
+    kwargs.pop('constr_penalty')
+    weight_type = kwargs['weight']
+    kwargs.pop('weight')
+    
     for i, constr in enumerate(self.constraints):
         if (not constr.is_dcp()):
             var_penalty.append(cvx.Variable(constr.shape))
@@ -241,9 +245,9 @@ def iter_dccp(self, max_iter, tau, mu, tau_max, solver, ep, max_penalty_tol, **k
         sum += var_weight[i]
     av = float(sum)/ len(var_weight)
     penaltymin=np.array(var_weight).min() 
-    if kwargs['weight'] == "50":
+    if weight_type == "50":
         var_weight = np.full_like(var_weight,50) # same-weight = 50 
-    elif kwargs['weight'] == "smallest":
+    elif weight_type == "smallest":
         var_weight = np.full_like(var_weight,penaltymin) # same-weight = lowest in tree
 
     rate=0.2 # the decay parameter for TWP-CCP with decay
@@ -297,14 +301,14 @@ def iter_dccp(self, max_iter, tau, mu, tau_max, solver, ep, max_penalty_tol, **k
         # objective
         if self.objective.NAME == "minimize":
             for i,var in enumerate(var_penalty):
-                if kwargs['weight'] == "decay":
+                if weight_type == "decay":
                     cost_new += ((var_weight[i]-penaltymin) * np.exp(-rate*(it-1)) + penaltymin) * self.tau * cvx.sum(var)
                 else:
                     cost_new += var_weight[i]  * self.tau * cvx.sum(var)
             obj_new = cvx.Minimize(cost_new)
         else:
             for i,var in enumerate(var_penalty):
-                if kwargs['weight'] == "decay":
+                if weight_type == "decay":
                     cost_new -= ((var_weight[i]-penaltymin) * np.exp(-rate*(it-1)) + penaltymin) * self.tau * cvx.sum(var)
                 else:
                     cost_new -= var_weight[i]  * self.tau * cvx.sum(var)
@@ -313,7 +317,6 @@ def iter_dccp(self, max_iter, tau, mu, tau_max, solver, ep, max_penalty_tol, **k
         # new problem
         #print(len(constr_new),"length of constr new")
         prob_new = cvx.Problem(obj_new, constr_new)
-
 
         # keep previous value of variables
         variable_pres_value = []
@@ -365,9 +368,9 @@ def iter_dccp(self, max_iter, tau, mu, tau_max, solver, ep, max_penalty_tol, **k
             , (np.abs(previous_cost - prob_new.value) <= ep) #  cost_difference (relaxed program)
             , (np.abs(self.objective.value - previous_org_cost) <= ep) # cost_difference (original program)
             , (max_penalty is None or max_penalty <= max_penalty_tol)   ) #  max_penalty  
+            print("--- Constraints whose penalty variables remain high ---")
             for i in range(len(slack_values)):
                 if slack_values[i] >= 1.0: #or (var_weight[i] != 4):
-                    print("--- Constraints whose penalty variables remain high ---")
                     print("constraint number:", i, ", slack value:" ,"{:.4f}".format(slack_values[i][0]),", penalty weight:", var_weight[i]) 
             print("--------------------------------------")
 
